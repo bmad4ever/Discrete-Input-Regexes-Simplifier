@@ -13,7 +13,7 @@ namespace RegProj
         public string regex;
     }
 
-    public static class CommandsCompiler
+    public static partial class CommandsCompiler
     {
         private static Regex parseInput = new Regex(
             @"^(?<base>\((.+?)\)|\\?.)(?<reps>(\{.+\}))?(?<extra>[\?\+\*]+)?"
@@ -57,6 +57,11 @@ namespace RegProj
             return true;
         }
 
+        /// <summary>
+        /// higher priority for those inserted first
+        /// </summary>
+        /// <param name="commands"></param>
+        /// <returns></returns>
         private static InputTreeNode BuildInputTree(List<Command> commands)
         {
             string[] groupNames = parseInput.GetGroupNames();
@@ -80,8 +85,7 @@ namespace RegProj
                 {
                     match = parseInput.Match(regex);
                     GroupCollection groupCollection = match.Groups;
-                    preNode.Min = 1;
-                    preNode.Max = 1;
+                    preNode.SetMinMax(1, 1);
                     preNode.Base = "";
                     preNode.Extra = "";
                     foreach (var groupName in groupNames) //for (int j = 1; j < groupCollection.Count; ++j)
@@ -135,36 +139,23 @@ namespace RegProj
             return root;
         }
 
-        private static InputTreeNode.Transform simplifyFunction = node =>
-        {
-            var children = node.Children;
-            var processed = new List<InputTreeNode>();
-            for (int i = children.Count - 1; i >= 0; i--)
-            {
-                var result = children[i];
-                for (int j = processed.Count - 1; j >= 0; j--)
-                {
-                    //TODO
-                }
-                processed.Add(result);
-            }
-            node.Children = processed;
-        };
-
         private static void SimplifyTree(InputTreeNode rootNode)
         {
-            rootNode.BFS_MAP(simplifyFunction);
+            rootNode.BFS_MAP(SimplifyRepetitions);
         }
 
         public static string CompileCommands(List<Command> commands)
         {
-            return CommandsCompiler.BuildInputTree(commands).GenerateRegexFromInputTree();
+            //generate tree already making some improvements
+            InputTreeNode tree = CommandsCompiler.BuildInputTree(commands);
+            SimplifyTree(tree); //simplify the tree further
+            return tree.GenerateRegexFromInputTree();
         }
 
         internal class InputTreeNode
         {
             public string Base;
-            public string Extra;
+            public string Extra = "";
             public int Min, Max;
             public List<InputTreeNode> Children = null;
 
@@ -178,6 +169,10 @@ namespace RegProj
                 this.Extra = preNode.Extra;
                 this.Min = preNode.Min;
                 this.Max = preNode.Max;
+
+                if (Min != 1 || Max != 1 || !Extra.Equals("?")) return;
+                Min = 0;
+                Extra = "";
             }
 
             public void AddChild(InputTreeNode child)
@@ -191,6 +186,12 @@ namespace RegProj
                 return Children?.FirstOrDefault(child =>
                     child.Base.Equals(preNode.Base) && child.Extra.Equals(preNode.Extra) && child.Min == preNode.Min &&
                     child.Max == preNode.Max);
+            }
+
+            public void SetMinMax(int min, int max)
+            {
+                Min = min;
+                Max = max;
             }
 
             public string GenerateRegexFromInputTree()
@@ -221,7 +222,8 @@ namespace RegProj
                 }
                 else
                 {
-                    builder.Append("{" + Min.ToString() + "," + Max.ToString() + "}");
+                    if (Min == 0 && Max == 1 && Extra.Equals("")) builder.Append("?");
+                    else builder.Append("{" + Min.ToString() + "," + Max.ToString() + "}");
                 }
                 builder.Append(Extra);
                 if (Children == null) return;
@@ -251,13 +253,72 @@ namespace RegProj
                 {
                     var node = auxQueue.Dequeue();
                     transverse.Enqueue(node);
-                    foreach (var child in node.Children)
-                        auxQueue.Enqueue(child);
+                    if (node.Children != null)
+                        foreach (var child in node.Children)
+                            auxQueue.Enqueue(child);
                 }
 
                 while (transverse.Count > 0)
                     transform(transverse.Dequeue());
             }
+
+            public enum InputTreeNodeCollision
+            {
+                /// <summary>
+                /// no collision occurs
+                /// </summary>
+                No = 0,
+                /// <summary>
+                /// the nodes have the same base, min, max. Extras must be within certain values but do not need to match.
+                /// </summary>
+                Equal,
+                /// <summary>
+                /// node is contained inside of the reference node
+                /// </summary>
+                Inside,
+                /// <summary>
+                /// inside in reverse priority
+                /// </summary>
+                Contains,
+                /// <summary>
+                /// starts outside the reference node and colides later
+                ///  </summary>
+                Crosses,
+                /// <summary>
+                /// starts inside the reference node and stops coliding later (crosses in reverse priority)
+                ///  </summary>
+                Iscrossed,
+                OutAfter,
+                OutBefore
+            }
+
+            public InputTreeNodeCollision CollidesWith(InputTreeNode node)
+            {
+                //TODO maybe change this condition?
+                if (!(
+                    Base.Equals(node.Base) &&
+                    (Extra.Equals("") || Extra.Equals("+") && Min != Max)
+                    &&
+                    (node.Extra.Equals("") || node.Extra.Equals("+") && node.Min != node.Max)
+                    )) return InputTreeNodeCollision.No;
+
+                if (Min >= node.Max) return InputTreeNodeCollision.OutAfter;
+
+                if (node.Min >= Max) return InputTreeNodeCollision.OutBefore;
+
+                if (node.Min == Min && node.Max == Max) return InputTreeNodeCollision.Equal;
+
+                if (node.Min <= Min && node.Max >= Max) return InputTreeNodeCollision.Inside;
+
+                if (node.Min >= Min && node.Max <= Max) return InputTreeNodeCollision.Contains;
+
+                if (node.Min < Max) return InputTreeNodeCollision.Crosses;
+
+                if (node.Max > Min) return InputTreeNodeCollision.Iscrossed;
+
+                throw new Exception("Bad Implementation - case missing");
+            }
+
         }
     }
 }

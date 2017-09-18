@@ -43,18 +43,14 @@ namespace UnitTests
             if (testCommands == null) throw new ArgumentNullException(nameof(testCommands));
             if (assertStrings == null) throw new ArgumentNullException(nameof(assertStrings));
             if(testCommands.Length != assertStrings.Length) throw new Exception("Number of assertions does't match number of testCommands");
-            var commands = new List<Command> { baseCommand };
-            for (var i = 0; i < commands.Count; i++)
+            List<Command> commands;
+
+            for (var i = 0; i < testCommands.Length; i++)
             {
-                commands.Add(testCommands[i]);
-                if (swap)
-                {
-                    var temp = testCommands[i];
-                    testCommands[i] = testCommands[0];
-                    testCommands[0] = temp;
-                }
-                Assert.AreEqual(assertStrings[i-1], CommandsCompiler.CompileCommands(commands));
-                commands.Remove(testCommands[i]);
+               commands = !swap?
+                    new List<Command> { baseCommand, testCommands[i] } :
+                new List<Command> { testCommands[i], baseCommand };
+                Assert.AreEqual(assertStrings[i], CommandsCompiler.CompileCommands(commands));
             }
         }
 
@@ -81,30 +77,45 @@ namespace UnitTests
                 },
                 @"(1(?<1a>a)|2(?<2b>b))"
             );
+
+
+            SimpleTest(new Command[]
+                {
+                    Nc("1a","1?a"),
+                },
+                @"1?(?<1a>a)"
+            );
+
+            SimpleTest(new Command[]
+                {
+                    Nc("1a","1{0,1}a"),
+                },
+                @"1?(?<1a>a)"
+            );
         }
 
         [TestMethod]
         public void TestContainedCases()
         {
-            Command testCommandbase = Nc("one", @"(1..){2,5}b");
+            Command testCommandbase = Nc("b", @"(1..){2,5}b");
             Command[] testCommands = new Command[]
             {
-                Nc("one",@"(1..){2,3}c"),
-                Nc("one",@"(1..){3,5}c"),
-                Nc("one",@"(1..){3,4}c")
+                Nc("c",@"(1..){2,3}c"),
+                Nc("c",@"(1..){3,5}c"),
+                Nc("c",@"(1..){3,4}c")
             };
             string[] testComStrings = new string[]
             {
-                @"(1..){2,3}+((1..){0,2}+(?<b>b)|(?<c>c))",
-                @"(1..){2,3}+((1..){0,2}+((?<b>b)|(?<c>c)))",
-                @"(1..){2,3}+({0,1}+({0,1}+(?<b>b)|(?<c>c)))"
+                @"(1..){2,3}+((1..){0,2}(?<b>b)|(?<c>c))",
+                @"(1..){2}((1..){1,3}((?<b>b)|(?<c>c))|(?<b>b))",
+                @"(1..){2}((1..){1,2}+((1..)?(?<b>b)|(?<c>c))|(?<b>b))"
             };
             TestAnOperation(testCommandbase, testCommands, testComStrings,false);
             testComStrings = new string[]
             {
-                @"(1..){2,3}+((?<c>c)|(1..){0,2}+(?<b>b))",
-                @"(1..){2,3}+((1..){0,2}+((?<c>c)|(?<b>b)))",
-                @"(1..){2,3}+((1..){0,1}+((?<c>c)|(1..){0,1}(?<b>b)))"
+                @"(1..){2,3}+((?<c>c)|(1..){0,2}(?<b>b))",
+                @"(1..){2}((1..){1,3}((?<c>c)|(?<b>b))|(?<b>b))",
+                @"(1..){2}((1..){1,2}+((?<c>c)|(1..)?(?<b>b))|(?<b>b))"
             };
             TestAnOperation(testCommandbase, testCommands, testComStrings,true);
         }
@@ -112,7 +123,19 @@ namespace UnitTests
         [TestMethod]
         public void TestOutterCases()
         {
-
+            Command testCommandbase = Nc("b", @"(1..){3,6}b");
+            Command[] testCommands = new Command[]
+            {
+                Nc("c",@"(1..){6,9}c"),
+               // Nc("c",@"(1..){7,9}c"),
+               // Nc("c",@"(1..){0,2}c"),
+               // Nc("c",@"(1..){1,3}c")
+            };
+            string[] testComStrings = new string[]
+            {
+                @"(1..){3,6}+((?<b>b)|(1..){0,3}(?<c>c))",
+            };
+            TestAnOperation(testCommandbase, testCommands, testComStrings, false);
         }
 
         [TestMethod]
