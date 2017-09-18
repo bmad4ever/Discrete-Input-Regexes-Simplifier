@@ -27,7 +27,7 @@ namespace RegProj
                         if (collision == InputTreeNode.InputTreeNodeCollision.Equal)
                             result = MergeEqualNodes(result, processed[j]);
                         else if (collision == InputTreeNode.InputTreeNodeCollision.OutAfter)
-                            result = MergeNodesOutter(result,processed[j],true);
+                            result = MergeNodesOutter(result, processed[j], true);
                         else if (collision == InputTreeNode.InputTreeNodeCollision.OutBefore)
                             result = MergeNodesOutter(result, processed[j], false);
                         else if (collision == InputTreeNode.InputTreeNodeCollision.Inside)
@@ -35,9 +35,9 @@ namespace RegProj
                         else if (collision == InputTreeNode.InputTreeNodeCollision.Contains)
                             result = MergeNodesIfContains(result, processed[j]);
                         else if (collision == InputTreeNode.InputTreeNodeCollision.Crosses)
-                            throw new NotImplementedException();
-                        else if (collision == InputTreeNode.InputTreeNodeCollision.Iscrossed)
-                            throw new NotImplementedException();
+                            result = MergeNodeAuxiliar2(result, processed[j], true);
+                        else if (collision == InputTreeNode.InputTreeNodeCollision.IsCrossed)
+                            result = MergeNodeAuxiliar2(result, processed[j], false);
                         processed.Remove(processed[j]);
                     }
                 }
@@ -123,10 +123,10 @@ namespace RegProj
             newNode.Max = prioritized.Min - 1;
             if (newNode.Min != newNode.Max) newNode.Extra = "+";
 
-            newNode2.SetMinMax(1, prioritized.Max - prioritized.Min+1);
-            if(newNode2.Min!=newNode2.Max) newNode2.Extra = "+";//greedy longest match
+            newNode2.SetMinMax(1, prioritized.Max - prioritized.Min + 1);
+            if (newNode2.Min != newNode2.Max) newNode2.Extra = "+";//greedy longest match
             newNode.AddChild(newNode2);
-            foreach (var child in other.Children)  newNode.AddChild(child);
+            foreach (var child in other.Children) newNode.AddChild(child);
 
             var newNode3 = new InputTreeNode
             {
@@ -144,26 +144,30 @@ namespace RegProj
         }
 
         private static InputTreeNode MergeNodeAuxiliar2(InputTreeNode prioritized, InputTreeNode other,
-            bool reversePriority)
+            bool prioritizedComes1st)
         {
-            if (reversePriority)
+            if (!prioritizedComes1st)
             {
                 var aux = other;
                 other = prioritized;
                 prioritized = aux;
             }
 
-            var newNode = new InputTreeNode { Base = prioritized.Base };
+            var newNode = new InputTreeNode { Base = prioritized.Base, Min = prioritized.Min, Max = other.Min - 1 };
+            if (newNode.Max != newNode.Min) newNode.Extra = "+";
+            var newNode2 = new InputTreeNode { Base = prioritized.Base, Min = 1, Max = prioritized.Max - other.Min +1};
+            if (newNode2.Max != newNode2.Min) newNode2.Extra = "+";
+            var newNode3 = new InputTreeNode { Base = prioritized.Base , Min = 0, Max = other.Max - prioritized.Max};
+            foreach (var child in other.Children) newNode3.AddChild(child);
 
-            /*TODO
-             //IFCROSSES
-              newNode.SetMinMax(prioritized.Min,other.Min);
-             newNode.Extra = "+";//greedy longest match
 
-             var newNode2 = new InputTreeNode { Base = prioritized.Base };
-             newNode2.SetMinMax(0,prioritized.Max-other.Min);
-             newNode2
-                */
+            newNode.AddChild(newNode2);
+            foreach (var child in prioritized.Children) newNode.AddChild(child);
+
+            if (!prioritizedComes1st) newNode2.AddChild(newNode3);
+            foreach (var child in prioritized.Children) newNode2.AddChild(child);
+            if (prioritizedComes1st) newNode2.AddChild(newNode3);
+
             return newNode;
         }
 
@@ -181,7 +185,7 @@ namespace RegProj
 
             var newNode = new InputTreeNode { Base = prioritized.Base, Min = prioritized.Min, Max = prioritized.Max };
             if (newNode.Min != newNode.Max) newNode.Extra = "+";
-            var newNode2 = new InputTreeNode { Base = prioritized.Base, Min = other.Min - prioritized.Max, Max = other.Max - other.Min};
+            var newNode2 = new InputTreeNode { Base = prioritized.Base, Min = other.Min - prioritized.Max, Max = other.Max - other.Min };
             if (newNode2.Min != newNode2.Max) newNode.Extra = "+";
             foreach (var child in other.Children) newNode2.AddChild(child);
 

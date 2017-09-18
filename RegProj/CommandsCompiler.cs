@@ -287,7 +287,7 @@ namespace RegProj
                 /// <summary>
                 /// starts inside the reference node and stops coliding later (crosses in reverse priority)
                 ///  </summary>
-                Iscrossed,
+                IsCrossed,
                 OutAfter,
                 OutBefore
             }
@@ -312,9 +312,9 @@ namespace RegProj
 
                 if (node.Min >= Min && node.Max <= Max) return InputTreeNodeCollision.Contains;
 
-                if (node.Min < Max) return InputTreeNodeCollision.Crosses;
-
-                if (node.Max > Min) return InputTreeNodeCollision.Iscrossed;
+                if (node.Min < Max && node.Min > Min) return InputTreeNodeCollision.Crosses;
+                //jic
+                if (node.Max > Min && node.Min < Min) return InputTreeNodeCollision.IsCrossed;
 
                 throw new Exception("Bad Implementation - case missing");
             }

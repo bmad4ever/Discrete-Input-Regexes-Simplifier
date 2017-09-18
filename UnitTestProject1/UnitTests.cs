@@ -127,13 +127,16 @@ namespace UnitTests
             Command[] testCommands = new Command[]
             {
                 Nc("c",@"(1..){6,9}c"),
-               // Nc("c",@"(1..){7,9}c"),
-               // Nc("c",@"(1..){0,2}c"),
-               // Nc("c",@"(1..){1,3}c")
+                Nc("c",@"(1..){7,9}c"),
+                Nc("c",@"(1..){0,2}c"),
+                Nc("c",@"(1..){1,3}c")
             };
             string[] testComStrings = new string[]
             {
                 @"(1..){3,6}+((?<b>b)|(1..){0,3}(?<c>c))",
+                @"(1..){3,6}+((?<b>b)|(1..){1,2}(?<c>c))",
+                @"(1..){0,2}+((1..){1,3}(?<b>b)|(?<c>c))",
+                @"(1..){1,3}+((1..){0,3}(?<b>b)|(?<c>c))"
             };
             TestAnOperation(testCommandbase, testCommands, testComStrings, false);
         }
@@ -141,7 +144,18 @@ namespace UnitTests
         [TestMethod]
         public void TestCrossCases()
         {
-
+            Command testCommandbase = Nc("b", @"(1..){3,7}b");
+            Command[] testCommands = new Command[]
+            {
+                Nc("c",@"(1..){5,9}c"),
+                Nc("c",@"(1..){1,5}c")
+            };
+            string[] testComStrings = new string[]
+            {
+                @"(1..){3,4}+((1..){1,3}+((?<b>b)|(1..){0,2}(?<c>c))|(?<b>b))",
+                @"(1..){1,2}+((1..){1,3}+((1..){0,2}(?<b>b)|(?<c>c))|(?<c>c))"
+            };
+            TestAnOperation(testCommandbase, testCommands, testComStrings, false);
         }
 
         [TestMethod]
