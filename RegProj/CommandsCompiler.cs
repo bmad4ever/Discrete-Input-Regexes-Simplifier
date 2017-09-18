@@ -9,14 +9,14 @@ namespace RegProj
 {
     public class Command
     {
-        public string name;
-        public string regex;
+        public string Name;
+        public string Regex;
     }
 
     public static partial class CommandsCompiler
     {
         private static Regex parseInput = new Regex(
-            @"^(?<base>\((.+?)\)|\\?.)(?<reps>(\{.+\}))?(?<extra>[\?\+\*]+)?"
+            @"^(?<base>\((.+?)\)|\\?.)(?<reps>(\{.+?\}))?(?<extra>[\?\+\*]+)?"
             , RegexOptions.Compiled | RegexOptions.ExplicitCapture
         );
 
@@ -49,7 +49,7 @@ namespace RegProj
         {
             foreach (var command in commands)
             {
-                if (!IsValidRegex(command.regex))
+                if (!IsValidRegex(command.Regex))
                 {
                     return false;
                 }
@@ -80,7 +80,7 @@ namespace RegProj
             foreach (Command command in commands)
             {
                 iterNode = root;
-                regex = command.regex;
+                regex = command.Regex;
                 do //if match remove content from command and create a node
                 {
                     match = parseInput.Match(regex);
@@ -122,8 +122,8 @@ namespace RegProj
                     if (last)
                     {
                         if (preNode.Base[0] == '(')
-                            preNode.Base = preNode.Base.Replace("(", "(?<" + command.name + ">");
-                        else preNode.Base = "(?<" + command.name + ">" + preNode.Base + ")";
+                            preNode.Base = preNode.Base.Replace("(", "(?<" + command.Name + ">");
+                        else preNode.Base = "(?<" + command.Name + ">" + preNode.Base + ")";
                     }
                     if ((childNode = iterNode.HasChild(preNode)) == null)
                     {
@@ -134,7 +134,7 @@ namespace RegProj
                     else iterNode = childNode;
                     if (last) break; //leave faster but use match anyway just in case some unespected input appears
                 } while (match.Success);
-                if (!last) throw new Exception("Unexpected input < " + regex + " > on command " + command.regex);
+                if (!last) throw new Exception("Unexpected input < " + regex + " > on command " + command.Regex);
             }
             return root;
         }
@@ -149,7 +149,7 @@ namespace RegProj
             //generate tree already making some improvements
             InputTreeNode tree = CommandsCompiler.BuildInputTree(commands);
             SimplifyTree(tree); //simplify the tree further
-            return tree.GenerateRegexFromInputTree();
+            return "^(" + tree.GenerateRegexFromInputTree() + ")";
         }
 
         internal class InputTreeNode
@@ -215,17 +215,44 @@ namespace RegProj
 
             private void GenerateRegexFromInputTree(StringBuilder builder)
             {
+                //[0-9]{10}+ is not supported -> emulate with this (?>[0-9]{10})
+                //always force possessive to sppedup?
+
+                //turn possessive open
+                if (Min != 1 || Max != 1)
+                {
+                    builder.Append("(?>");
+                }
+
                 builder.Append(Base);
                 if (Min == Max)
                 {
-                    if (Min != 1) builder.Append("{" + Min.ToString() + "}");
+                    if (Min != 1)
+                    {
+                        builder.Append("{" + Min.ToString() + "}");
+                    }
                 }
                 else
                 {
-                    if (Min == 0 && Max == 1 && Extra.Equals("")) builder.Append("?");
-                    else builder.Append("{" + Min.ToString() + "," + Max.ToString() + "}");
+                    if (Min == 0 && Max == 1 && Extra.Equals(""))
+                    {
+                        builder.Append("?");
+                    }
+                    else
+                    {
+                        builder.Append("{" + Min.ToString() + "," + Max.ToString() + "}");
+                    }
                 }
-                builder.Append(Extra);
+
+                //turn possessive close
+                if (Min != 1 || Max != 1)
+                {
+                    if (Extra.Length>0 && Extra[Extra.Length - 1] == '+') Extra = Extra.Substring(0,Extra.Length-1);
+                    builder.Append(Extra);
+                    builder.Append(")");
+                }
+                else builder.Append(Extra);
+
                 if (Children == null) return;
                 if (Children.Count == 1) Children[0].GenerateRegexFromInputTree(builder);
                 else
@@ -245,21 +272,18 @@ namespace RegProj
 
             public void BFS_MAP(Transform transform)
             {
-                var transverse = new Queue<InputTreeNode>();
                 var auxQueue = new Queue<InputTreeNode>();
                 auxQueue.Enqueue(this);
 
                 while (auxQueue.Count > 0)
                 {
                     var node = auxQueue.Dequeue();
-                    transverse.Enqueue(node);
-                    if (node.Children != null)
-                        foreach (var child in node.Children)
-                            auxQueue.Enqueue(child);
+                    transform(node);
+                    if (node.Children == null) continue;
+                    foreach (var child in node.Children)
+                        auxQueue.Enqueue(child);
                 }
 
-                while (transverse.Count > 0)
-                    transform(transverse.Dequeue());
             }
 
             public enum InputTreeNodeCollision

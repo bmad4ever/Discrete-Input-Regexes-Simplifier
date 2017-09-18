@@ -12,8 +12,8 @@ namespace UnitTests
         {
             var command = new Command
             {
-                regex = regex,
-                name = name
+                Regex = regex,
+                Name = name
             };
             return command;
         }
