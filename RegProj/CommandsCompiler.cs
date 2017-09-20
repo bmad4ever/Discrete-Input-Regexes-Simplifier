@@ -144,12 +144,18 @@ namespace RegProj
             rootNode.BFS_MAP(SimplifyRepetitions);
         }
 
-        public static string CompileCommands(List<Command> commands)
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="commands"></param>
+        /// <param name="csharp">will replace the plus notation on possessive cases which are not supported by C#. Will also add possive on other cases if applyable.</param>
+        /// <returns></returns>
+        public static string CompileCommands(List<Command> commands, bool csharp=true)
         {
             //generate tree already making some improvements
             InputTreeNode tree = CommandsCompiler.BuildInputTree(commands);
             SimplifyTree(tree); //simplify the tree further
-            return "^(" + tree.GenerateRegexFromInputTree() + ")";
+            return "^(" + tree.GenerateRegexFromInputTree(csharp) + ")";
         }
 
         internal class InputTreeNode
@@ -194,10 +200,26 @@ namespace RegProj
                 Max = max;
             }
 
-            public string GenerateRegexFromInputTree()
+            public string GenerateRegexFromInputTree(bool csharp=true)
             {
                 var builder = new StringBuilder();
                 if (Children == null) return builder.ToString();
+                if (csharp)
+                {
+                    if (Children.Count == 1) Children[0].GenerateRegexFromInputTreeCSharp(builder);
+                    else
+                    {
+                        builder.Append('(');
+                        foreach (var child in Children)
+                        {
+                            child.GenerateRegexFromInputTreeCSharp(builder);
+                            builder.Append('|');
+                        }
+                        builder.Remove(builder.Length - 1, 1);
+                        builder.Append(')');
+                    }
+                    return builder.ToString();
+                }//else
                 if (Children.Count == 1) Children[0].GenerateRegexFromInputTree(builder);
                 else
                 {
@@ -213,7 +235,7 @@ namespace RegProj
                 return builder.ToString();
             }
 
-            private void GenerateRegexFromInputTree(StringBuilder builder)
+            private void GenerateRegexFromInputTreeCSharp(StringBuilder builder)
             {
                 //[0-9]{10}+ is not supported -> emulate with this (?>[0-9]{10})
                 //always force possessive to sppedup?
@@ -253,6 +275,34 @@ namespace RegProj
                 }
                 else builder.Append(Extra);
 
+                if (Children == null) return;
+                if (Children.Count == 1) Children[0].GenerateRegexFromInputTreeCSharp(builder);
+                else
+                {
+                    builder.Append('(');
+                    foreach (var child in Children)
+                    {
+                        child.GenerateRegexFromInputTreeCSharp(builder);
+                        builder.Append('|');
+                    }
+                    builder.Remove(builder.Length - 1, 1);
+                    builder.Append(')');
+                }
+            }
+
+           private void GenerateRegexFromInputTree(StringBuilder builder)
+            {
+                builder.Append(Base);
+                if (Min == Max)
+                {
+                    if (Min != 1) builder.Append("{" + Min.ToString() + "}");
+                }
+                else
+                {
+                    if (Min == 0 && Max == 1 && Extra.Equals("")) builder.Append("?");
+                    else builder.Append("{" + Min.ToString() + "," + Max.ToString() + "}");
+                }
+                builder.Append(Extra);
                 if (Children == null) return;
                 if (Children.Count == 1) Children[0].GenerateRegexFromInputTree(builder);
                 else

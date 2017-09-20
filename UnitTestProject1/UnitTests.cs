@@ -26,8 +26,8 @@ namespace UnitTests
         static void SimpleTest(Command[] testCommands, string expectedResult)
         {
             var commands = new List<Command>(testCommands);
-            var finalregex = CommandsCompiler.CompileCommands(commands);
-            Assert.AreEqual(expectedResult, finalregex);
+            var finalregex = CommandsCompiler.CompileCommands(commands,false);
+            Assert.AreEqual("^("+expectedResult+")", finalregex);
         }
         
         /// <summary>
@@ -50,7 +50,7 @@ namespace UnitTests
                commands = !swap?
                     new List<Command> { baseCommand, testCommands[i] } :
                 new List<Command> { testCommands[i], baseCommand };
-                Assert.AreEqual(assertStrings[i], CommandsCompiler.CompileCommands(commands));
+                Assert.AreEqual("^("+assertStrings[i]+")", CommandsCompiler.CompileCommands(commands,false));
             }
         }
 
