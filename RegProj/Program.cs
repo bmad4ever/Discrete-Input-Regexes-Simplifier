@@ -20,10 +20,10 @@ namespace RegProj
         /// <param name="commands"></param>
         /// <param name="reps"></param>
         /// <returns>stopwatch with the exec time</returns>
-        delegate Stopwatch Exec(Command[] commands,String[] tomatch,int reps,bool compile);
+        delegate Stopwatch Exec(Command[] commands, String[] tomatch, int reps, bool compile);
         delegate Stopwatch ExecRegex(Regex regex, String[] tomatch, int reps);
 
-        private static Exec OrJoins = (c, m,r,comp) =>
+        private static Exec OrJoins = (c, m, r, comp) =>
         {
             String finalReg = "^(";
             foreach (var command in c)
@@ -33,7 +33,7 @@ namespace RegProj
             }
             finalReg.Substring(0, finalReg.Length - 1);
             finalReg += ")";
-            Regex compiledRegex = new Regex(finalReg,(comp? RegexOptions.Compiled : 0) | RegexOptions.ExplicitCapture);
+            Regex compiledRegex = new Regex(finalReg, (comp ? RegexOptions.Compiled : 0) | RegexOptions.ExplicitCapture);
 
             Stopwatch sw = new Stopwatch();
             sw.Start();
@@ -53,7 +53,7 @@ namespace RegProj
             Stopwatch sw = new Stopwatch();
             sw.Start();
 
-            for(int i = r; r>=0; --r)
+            for (int i = r; r >= 0; --r)
                 foreach (var text in m)
                     compiledRegex.Match(text);
 
@@ -96,7 +96,7 @@ namespace RegProj
             }
 
 
-            
+
             var expr = new RegexCompilationInfo(finalReg,
                 RegexOptions.ExplicitCapture,
                 name,
@@ -170,10 +170,10 @@ namespace RegProj
                 "b"
             };
             Command[] commands = CommandsP1;
-            Measeure("Or Joins",OrJoins,reps,false,text,commands);
+            Measeure("Or Joins", OrJoins, reps, false, text, commands);
             Measeure("Or Joins (compiled)", OrJoins, reps, true, text, commands);
             Measeure("HC OrJoin", HardCompiled, reps, text, new OrJoinperf1());
-            Measeure("RespectSimp", PreserveOrderSimplification, reps,false, text, commands);
+            Measeure("RespectSimp", PreserveOrderSimplification, reps, false, text, commands);
             Measeure("RespectSimp (compiled)", PreserveOrderSimplification, reps, true, text, commands);
             Measeure("HC RespectSimp", HardCompiled, reps, text, new PreserveOrderSimplificationperf1());
             Console.WriteLine("--------------------------");
@@ -190,11 +190,11 @@ namespace RegProj
             Console.WriteLine("summary:low reps; small strings; 2 end variations");
             Console.WriteLine();
 
-             int reps = 100;
-                    String[] text = new string[]
-                        {
+            int reps = 100;
+            String[] text = new string[]
+                {
                             "133133133233b"
-                        };
+                };
             Command[] commands = CommandsP2;
 
             Measeure("Or Joins", OrJoins, reps, false, text, commands);
@@ -376,13 +376,13 @@ namespace RegProj
             return command;
         }
 
-        static void Measeure(String label,Exec toMeasure, int repetitions,bool compile, String[] tomatch,Command[] commands)
+        static void Measeure(String label, Exec toMeasure, int repetitions, bool compile, String[] tomatch, Command[] commands)
         {
-            Stopwatch sw = toMeasure(commands, tomatch,repetitions,compile);
+            Stopwatch sw = toMeasure(commands, tomatch, repetitions, compile);
             Console.WriteLine(label);
             Console.WriteLine("Elapsed        = {0}", sw.Elapsed);
             Console.WriteLine("Elapsed (ms) by one = {0}", sw.Elapsed.TotalMilliseconds / Convert.ToDouble(repetitions));
-            Console.WriteLine("(60 frames per second)\nHow many per frame={0}", 60000.0 * Convert.ToDouble(repetitions) / sw.Elapsed.TotalMilliseconds);
+            Console.WriteLine("(60 frames per second)\nHow many per frame={0}", 1000.0 / 60.0 * Convert.ToDouble(repetitions) / sw.Elapsed.TotalMilliseconds);
             Console.WriteLine();
             GC.Collect();
             GC.WaitForFullGCComplete();
@@ -395,7 +395,7 @@ namespace RegProj
             Console.WriteLine(label);
             Console.WriteLine("Elapsed        = {0}", sw.Elapsed);
             Console.WriteLine("Elapsed (ms) by one = {0}", sw.Elapsed.TotalMilliseconds / Convert.ToDouble(repetitions));
-            Console.WriteLine("(60 frames per second)\nHow many per frame={0}",  60000.0 * Convert.ToDouble(repetitions)/ sw.Elapsed.TotalMilliseconds);
+            Console.WriteLine("(60 frames per second)\nHow many per frame={0}", 1000.0 / 60.0 * Convert.ToDouble(repetitions) / sw.Elapsed.TotalMilliseconds);
             Console.WriteLine();
             GC.Collect();
             GC.WaitForFullGCComplete();
